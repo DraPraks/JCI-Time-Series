@@ -45,33 +45,14 @@
 
 **Output:** `Dataset/processed/energy.parquet` (58,439 rows, 82 tickers, 24.4 MB) and `technology.parquet` (25,633 rows, 44 tickers, 10.7 MB). 77 features + target. 12.4% rows dropped to NaN (rolling warm-up + last-row target). Feature reference CSV exported.
 
-## Week 3: Model Evaluation, Selection & Interpretation
+## Week 3 (Planned): Evaluation & Reporting
 
-**Split:** Temporal only. Train on earlier periods, validate on mid holdout, test on the most recent period. No shuffle was used, so the reported test result reflects forward-looking generalization rather than random cross-sectional mixing.
+**Split:** Temporal only. Train on earlier periods, validate on mid holdout, test on most recent. No shuffle.
 
-**Models compared:** Logistic regression baseline and Random Forest. Random Forest is selected as the final model because it improves the baseline on the validation and test sets across F1, ROC-AUC, PR-AUC, MCC, and macro-F1. This matters because the target is imbalanced; accuracy alone is not a useful selection metric.
+**Models:** Logistic regression (baseline), gradient-boosted trees (LightGBM/XGBoost), optionally a simple MLP.
 
-**Metric summary:**
+**Metrics:** Precision, recall, F1, ROC-AUC. Accuracy alone is misleading at 63/37 class balance. Confusion matrices stratified by sector and time period.
 
-| Model | Split | F1 Up | ROC-AUC | PR-AUC | MCC | Predicted Up Rate |
-|---|---:|---:|---:|---:|---:|---:|
-| Logistic Regression | Validation | 0.543 | 0.551 | 0.407 | 0.008 | 99.9% |
-| Logistic Regression | Test | 0.525 | 0.562 | 0.399 | 0.000 | 100.0% |
-| Random Forest | Validation | 0.552 | 0.585 | 0.439 | 0.114 | 88.0% |
-| Random Forest | Test | 0.536 | 0.586 | 0.425 | 0.121 | 86.4% |
+**Interpretation:** SHAP or permutation importance. Hypothesis: cross-sectional features carry weight beyond single-ticker technical indicators.
 
-**Final selected model:** Random Forest at threshold 0.410. On the test set, it achieves F1 Up = 0.536, ROC-AUC = 0.586, PR-AUC = 0.425, and MCC = 0.121. The test confusion matrix is TP = 2,388, FP = 3,918, TN = 786, FN = 209.
-
-**Model limitation:** Random Forest captures more signal than logistic regression, but it still has a strong upward bias. Test recall for Up is high (0.914), while precision is modest (0.377), meaning the model finds most actual Up days but also produces many false positives. Therefore, it is better interpreted as a decision-support signal for ranking or screening candidates, not as a standalone trading rule.
-
-**Feature interpretation:** The most important Random Forest features are technical and liquidity-based rather than raw prices.
-
-- **Volatility and intraday range:** `high_low_spread`, `volatility_5d`, `volatility_10d`, and lagged spread features suggest that short-term trading range and recent uncertainty are central to next-day direction.
-- **Short-term trend and price position:** `price_vs_ma5`, `price_vs_ma10`, `price_vs_ma50`, `price_position`, `dist_from_low50`, and `dist_from_high5` indicate that the model uses where the stock sits relative to recent moving averages and recent highs/lows.
-- **Volume and liquidity:** `volume_ratio_50d`, `volume_ratio_20d`, `volume_std_50d`, `volume_std_20d`, `volume_std_5d`, and `log_volume` show that abnormal volume and liquidity conditions help distinguish next-day movement regimes.
-- **Recent returns and momentum:** `daily_return`, `log_return`, and `momentum_50d` capture immediate return pressure and medium-term continuation or reversal effects.
-- **Sector and cross-sectional context:** Sector-relative features are part of the engineered feature set, but they are not among the top Random Forest importances. In the final report, they should be discussed as context features and tested through sector-level slices rather than overstated as the main driver.
-
-**Qualitative analysis hooks for final report:** Connect model behavior back to market conditions by slicing results by sector (Energy vs. Technology), time period, and market regime. Useful views include false positives during weak or sideways periods, recall during broad Up regimes, and whether Energy and Technology differ in precision/recall because of commodity sensitivity versus growth-stock volatility. These should be reported only after computing the slices, not inferred from the global metrics alone.
-
-**Deliverables:** Final report should document the full pipeline, selected Random Forest model, metric comparison against logistic regression, confusion-matrix tradeoff, feature interpretation, and qualitative sector/time/regime analysis.
+**Deliverables:** Cleaned notebooks, final report documenting pipeline + results + reasoning.
